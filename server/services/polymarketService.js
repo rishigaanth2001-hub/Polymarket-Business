@@ -2,6 +2,29 @@ import axios from 'axios';
 
 const GAMMA_API_BASE = 'https://gamma-api.polymarket.com';
 
+// Define category keywords for intelligent categorization
+const CATEGORY_KEYWORDS = {
+  Sports: ['nfl', 'nba', 'nhl', 'fifa', 'world cup', 'cricket', 'olympics', 'tennis', 'soccer', 'football', 'baseball', 'hockey', 'championship', 'super bowl', 'finals', 'playoff'],
+  Crypto: ['bitcoin', 'ethereum', 'crypto', 'cryptocurrency', 'blockchain', 'btc', 'eth', 'coin', 'defi', 'nft', '$1m', 'satoshi'],
+  Politics: ['president', 'election', 'trump', 'biden', 'congress', 'senate', 'vote', 'impeach', 'governor', 'mayor', 'political', 'democrat', 'republican'],
+  Entertainment: ['movie', 'album', 'actor', 'actress', 'emmy', 'oscar', 'netflix', 'release', 'song', 'Grammy', 'award', 'celebrity', 'hollywood'],
+  Science: ['ai', 'openai', 'tech', 'space', 'nasa', 'science', 'physics', 'quantum', 'robot', 'ai model'],
+  Weather: ['storm', 'hurricane', 'weather', 'temperature', 'celsius', 'fahrenheit', 'tornado', 'blizzard']
+};
+
+// Categorize a market based on question keywords
+function categorizeMarket(question) {
+  const lowerQuestion = (question || '').toLowerCase();
+  
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some(keyword => lowerQuestion.includes(keyword))) {
+      return category;
+    }
+  }
+  
+  return 'General';
+}
+
 // Fetch all markets from Polymarket Gamma API
 export async function getAllMarkets() {
   try {
@@ -10,7 +33,7 @@ export async function getAllMarkets() {
       params: {
         active: true,
         closed: false,
-        limit: 100
+        limit: 200
       }
     });
     
@@ -22,96 +45,90 @@ export async function getAllMarkets() {
   }
 }
 
-// Get top 10 high volume markets for each category/tag
+// Get top 10 high volume markets for each category
 export async function getTopVolumeMarkets() {
   try {
-    // Popular categories/tags on Polymarket
-    const categories = ['Sports', 'Crypto', 'Politics', 'Entertainment', 'Science', 'Weather'];
+    let markets = await getAllMarkets();
     
-    const marketsByCategory = {};
-
-    // Fetch markets for each category
-    for (const category of categories) {
-      try {
-        const response = await axios.get(`${GAMMA_API_BASE}/markets`, {
-          params: {
-            active: true,
-            closed: false,
-            tag: category,
-            limit: 100
-          },
-          timeout: 5000
-        });
-
-        let markets = Array.isArray(response.data) ? response.data : [];
-
-        // Filter and map markets data
-        const filtered = markets
-          .map(m => {
-            // Parse outcome prices if it's a string
-            let prices = [];
-            try {
-              if (typeof m.outcomePrices === 'string') {
-                prices = JSON.parse(m.outcomePrices);
-              } else if (Array.isArray(m.outcomePrices)) {
-                prices = m.outcomePrices;
-              }
-            } catch (e) {
-              prices = [];
-            }
-
-            // Parse outcomes if it's a string
-            let outcomes = [];
-            try {
-              if (typeof m.outcomes === 'string') {
-                outcomes = JSON.parse(m.outcomes);
-              } else if (Array.isArray(m.outcomes)) {
-                outcomes = m.outcomes;
-              }
-            } catch (e) {
-              outcomes = [];
-            }
-
-            // Map price values to outcomes
-            const outcomesList = outcomes.map((outcome, idx) => ({
-              name: outcome,
-              price: prices[idx] ? parseFloat(prices[idx]) : 0.5,
-              prob: prices[idx] ? parseFloat(prices[idx]) : 0.5
-            }));
-
-            return {
-              id: m.id,
-              question: m.question || 'Unknown Market',
-              category: category,
-              volume24hr: m.volume24hr || 0,
-              volume: m.volumeNum || 0,
-              creationTime: m.createdAt || new Date().toISOString(),
-              active: m.active,
-              closed: m.closed,
-              outcomes: outcomesList,
-              description: m.description || ''
-            };
-          });
-
-        // Sort by 24-hour volume and get top 10
-        const topMarkets = filtered
-          .sort((a, b) => b.volume24hr - a.volume24hr)
-          .slice(0, 10);
-
-        if (topMarkets.length > 0) {
-          marketsByCategory[category] = topMarkets;
-        }
-      } catch (error) {
-        console.warn(`Error fetching ${category} markets:`, error.message);
-        // Continue to next category on error
-      }
+    // Ensure we have an array
+    if (!Array.isArray(markets)) {
+      return {};
     }
 
-    const totalMarkets = Object.values(marketsByCategory).reduce((sum, cats) => sum + cats.length, 0);
-    const categoriesCount = Object.keys(marketsByCategory).length;
+    // Filter and map markets data
+    const filtered = markets
+      .map(m => {
+        // Parse outcome prices if it's a string
+        let prices = [];
+        try {
+          if (typeof m.outcomePrices === 'string') {
+            prices = JSON.parse(m.outcomePrices);
+          } else if (Array.isArray(m.outcomePrices)) {
+            prices = m.outcomePrices;
+          }
+        } catch (e) {
+          prices = [];
+        }
+
+        // Parse outcomes if it's a string
+        let outcomes = [];
+        try {
+          if (typeof m.outcomes === 'string') {
+            outcomes = JSON.parse(m.outcomes);
+          } else if (Array.isArray(m.outcomes)) {
+            outcomes = m.outcomes;
+          }
+        } catch (e) {
+          outcomes = [];
+        }
+
+        // Map price values to outcomes
+        const outcomesList = outcomes.map((outcome, idx) => ({
+          name: outcome,
+          price: prices[idx] ? parseFloat(prices[idx]) : 0.5,
+          prob: prices[idx] ? parseFloat(prices[idx]) : 0.5
+        }));
+
+        // Intelligently categorize the market
+        const category = categorizeMarket(m.question);
+
+        return {
+          id: m.id,
+          question: m.question || 'Unknown Market',
+          category: category,
+          volume24hr: m.volume24hr || 0,
+          volume: m.volumeNum || 0,
+          creationTime: m.createdAt || new Date().toISOString(),
+          active: m.active,
+          closed: m.closed,
+          outcomes: outcomesList,
+          description: m.description || ''
+        };
+      });
+
+    // Group markets by category
+    const byCategory = {};
+    filtered.forEach(market => {
+      const category = market.category;
+      if (!byCategory[category]) {
+        byCategory[category] = [];
+      }
+      byCategory[category].push(market);
+    });
+
+    // Sort each category by volume and get top 10
+    const result = {};
+    Object.keys(byCategory).sort().forEach(category => {
+      result[category] = byCategory[category]
+        .sort((a, b) => b.volume24hr - a.volume24hr)
+        .slice(0, 10);
+    });
+
+    const totalMarkets = filtered.length;
+    const categoriesCount = Object.keys(result).length;
     console.log(`Found ${totalMarkets} active markets across ${categoriesCount} categories`);
     
-    return marketsByCategory;
+    return result;
   } catch (error) {
     console.error('Error getting top volume markets:', error.message);
     throw error;
