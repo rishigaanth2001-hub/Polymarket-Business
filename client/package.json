@@ -3,11 +3,14 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "homepage": "https://rishigaanth2001-hub.github.io/Polymarket-Business/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "deploy": "npm run build && gh-pages -d dist",
+    "deploy:clean": "gh-pages --clean"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -16,6 +19,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
-    "vite": "^5.0.1"
+    "vite": "^5.0.1",
+    "gh-pages": "^6.1.1"
   }
 }

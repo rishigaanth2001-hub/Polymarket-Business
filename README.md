@@ -241,6 +241,34 @@ Each market shows:
 4. Monitor odds changes to time your bets
 5. Practice different strategies risk-free
 
+## 🚀 Deployment
+
+### Frontend - GitHub Pages
+The frontend is deployed to GitHub Pages automatically via GitHub Actions.
+
+**Quick Deploy:**
+```bash
+cd client
+npm run build
+npm run deploy
+```
+
+Live: https://rishigaanth2001-hub.github.io/Polymarket-Business/
+
+### Backend - Choose Your Platform
+
+The backend needs to be deployed separately to a service like:
+- **Railway** (recommended - easiest setup)
+- **Vercel**
+- **Render**
+- **Fly.io**
+
+See `QUICK_DEPLOY.md` for step-by-step instructions.
+
+**Full Deployment Guide**: See `DEPLOYMENT.md` for detailed configurations and troubleshooting.
+
+---
+
 ## 🤝 Contributing
 
 This is a practice/learning project. Feel free to extend features like:
